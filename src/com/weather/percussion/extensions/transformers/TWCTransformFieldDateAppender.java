@@ -5,6 +5,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -37,9 +38,16 @@ public class TWCTransformFieldDateAppender extends PSDefaultExtension implements
         PSOExtensionParamsHelper paramsHelper = new PSOExtensionParamsHelper(extDef, params, request, log);
         
         String fieldName = paramsHelper.getRequiredParameter(FIELD_NAME_EXT_PARAM);
+        String replaceWithField = paramsHelper.getParameter(REPLACE_WITH_FIELD_PARAM);
         String preOrPost = paramsHelper.getRequiredParameter(PRE_OR_POST_EXT_PARAM);
         
-        String fieldValue = request.getParameter(fieldName);
+        String fieldValue = "";
+        if (StringUtils.isBlank(replaceWithField)) {
+            fieldValue = request.getParameter(fieldName);
+        }
+        else {
+            fieldValue = request.getParameter(replaceWithField);
+        }
         
         Date now = new Date();
         DateFormat dateFormat = new SimpleDateFormat("YYYYMMdd");
@@ -69,6 +77,7 @@ public class TWCTransformFieldDateAppender extends PSDefaultExtension implements
     private static final String ACTION_TYPE_INSERT = "INSERT";
     private static final String FIELD_NAME_EXT_PARAM = "fieldName";
     private static final String PRE_OR_POST_EXT_PARAM = "preOrPost";
+    private static final String REPLACE_WITH_FIELD_PARAM = "replaceWithField";
     private static final String PRE_PARAM_VALUE = "pre";
     private static final String POST_PARAM_VALUE = "post";
     private static final String BOTH_PARAM_VALUE = "both";
