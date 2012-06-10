@@ -27,30 +27,35 @@ public class TWCTransformFieldDateAppender extends PSDefaultExtension implements
     @Override
     public Object processUdf(Object[] params, IPSRequestContext request)
             throws PSConversionException {
-        String actionType = request.getParameter(DB_ACTION_TYPE_PARAM);
-        
-        //Return true if action type not valid
-        if(actionType == null || !actionType.equals(ACTION_TYPE_INSERT)) {
-            log.debug("Action type is not insert, no key transformation");
-            return true;       
-        } 
+        String actionType = request.getParameter(DB_ACTION_TYPE_PARAM); 
         
         PSOExtensionParamsHelper paramsHelper = new PSOExtensionParamsHelper(extDef, params, request, log);
         
         String fieldName = paramsHelper.getRequiredParameter(FIELD_NAME_EXT_PARAM);
+        log.debug("Field: " + fieldName);
         String replaceWithField = paramsHelper.getParameter(REPLACE_WITH_FIELD_PARAM);
+        log.debug("replace with field: " + replaceWithField);
         String preOrPost = paramsHelper.getRequiredParameter(PRE_OR_POST_EXT_PARAM);
+        log.debug("pre or post: " + preOrPost);
+        
+        //Return true if action type not valid
+        if(actionType == null || !actionType.equals(ACTION_TYPE_INSERT)) {
+            log.debug("Action type is not insert, no key transformation");
+            return request.getParameter(fieldName);       
+        }        
         
         String fieldValue = "";
         if (StringUtils.isBlank(replaceWithField)) {
             fieldValue = request.getParameter(fieldName);
+            log.debug("Field value: " + fieldValue);
         }
         else {
             fieldValue = request.getParameter(replaceWithField);
+            log.debug("Overriding field, found value: " + fieldValue);
         }
         
         Date now = new Date();
-        DateFormat dateFormat = new SimpleDateFormat("YYYYMMdd");
+        DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
         String dateFormatted = dateFormat.format(now);
         
         if (PRE_PARAM_VALUE.equals(preOrPost)) {
@@ -63,6 +68,7 @@ public class TWCTransformFieldDateAppender extends PSDefaultExtension implements
             fieldValue = (new StringBuilder(dateFormatted)).append(DELIMITER).append(fieldValue).append(DELIMITER).append(dateFormatted).toString();
         }
         
+        log.debug("returning field value: " + fieldValue);
         return fieldValue;
     }
     
