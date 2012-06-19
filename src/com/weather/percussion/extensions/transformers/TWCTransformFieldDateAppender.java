@@ -4,6 +4,8 @@ import java.io.File;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -54,18 +56,33 @@ public class TWCTransformFieldDateAppender extends PSDefaultExtension implements
             log.debug("Overriding field, found value: " + fieldValue);
         }
         
+        Pattern endPattern = Pattern.compile("-[0-9]{6,8}$");
+        Matcher endMatcher = endPattern.matcher(fieldValue);
+        Pattern startPattern = Pattern.compile("^[0-9]{6,8}-");
+        Matcher startMatcher = startPattern.matcher(fieldValue);        
+        boolean startsWithDate = startMatcher.find();
+        boolean endsWithDate = endMatcher.find();
+        
         Date now = new Date();
         DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
         String dateFormatted = dateFormat.format(now);
         
-        if (PRE_PARAM_VALUE.equals(preOrPost)) {
+        if (PRE_PARAM_VALUE.equals(preOrPost) && !startsWithDate) {
             fieldValue = (new StringBuilder(dateFormatted)).append(DELIMITER).append(fieldValue).toString();    
         }
-        else if (POST_PARAM_VALUE.equals(preOrPost)) {
+        else if (POST_PARAM_VALUE.equals(preOrPost) && !endsWithDate) {
             fieldValue = (new StringBuilder(fieldValue)).append(DELIMITER).append(dateFormatted).toString();
         }
         else if (BOTH_PARAM_VALUE.equals(preOrPost)) {
-            fieldValue = (new StringBuilder(dateFormatted)).append(DELIMITER).append(fieldValue).append(DELIMITER).append(dateFormatted).toString();
+            if (!startsWithDate && !endsWithDate) {
+                fieldValue = (new StringBuilder(dateFormatted)).append(DELIMITER).append(fieldValue).append(DELIMITER).append(dateFormatted).toString();
+            }
+            else if (startsWithDate) {
+                fieldValue = (new StringBuilder(fieldValue)).append(DELIMITER).append(dateFormatted).toString();
+            }
+            else if (endsWithDate) {
+                fieldValue = (new StringBuilder(dateFormatted)).append(DELIMITER).append(fieldValue).toString();
+            }
         }
         
         log.debug("returning field value: " + fieldValue);
