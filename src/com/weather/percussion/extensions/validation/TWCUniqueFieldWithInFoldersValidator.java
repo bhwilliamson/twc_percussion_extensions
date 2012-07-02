@@ -18,20 +18,31 @@ public class TWCUniqueFieldWithInFoldersValidator extends
         super();
     }
     
+    /**
+     * Identical to the PSO extension similarly named except returns true on exception, not false.
+     * This is needed for web services to correctly create content.  Web services creates the content first without
+     * a related folder, which 
+     */
     public Boolean processUdf(Object params[], IPSRequestContext request) throws PSConversionException {
         String fieldName = "";
         String fieldValue = "";
+        log.debug("Entering TWCUniqueFieldWithInFoldersValidator");
         try {
             String cmd = request.getParameter(SYS_COMMAND_PARAM);
             String actionType = request.getParameter(DB_ACTION_TYPE_PARAM);
             
             //Return true if action isn't valid
-            if(actionType == null || !actionType.equals(ACTION_TYPE_INSERT) && !actionType.equals(ACTION_TYPE_UPDATE))
+            if(actionType == null || !actionType.equals(ACTION_TYPE_INSERT) && !actionType.equals(ACTION_TYPE_UPDATE)) {
+                log.debug((new StringBuilder("Invalid action: ").append(actionType).append(" returning true")).toString());
                 return true;
+            }
             
             PSOExtensionParamsHelper paramsHelper = new PSOExtensionParamsHelper(getExtensionDef(), params, request, log);
             fieldName = paramsHelper.getRequiredParameter(EXT_PARAM_FIELDNAME);
             fieldValue = request.getParameter(fieldName);
+            log.debug((new StringBuilder("Field Name: ").append(fieldName)).toString());
+            log.debug((new StringBuilder("Field Value: ").append(fieldValue)).toString());
+            
             if(fieldValue == null) {
                 log.debug((new StringBuilder()).append("Field value was null for field: ").append(fieldName).toString());
                 return true;
@@ -64,6 +75,8 @@ public class TWCUniqueFieldWithInFoldersValidator extends
                 else
                     retVal = false;
             }
+            
+            log.debug((new StringBuilder("Returning: ")).append(retVal).toString());
             return retVal;
             
         }
