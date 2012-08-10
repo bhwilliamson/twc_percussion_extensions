@@ -73,7 +73,7 @@ public class TWCUniqueFieldWithInFoldersValidator extends
                 if(folderId != null)
                     retVal = isFieldValueUniqueInFolder(folderId.intValue(), fieldName, fieldValue, typeList, checkPaths);
                 else
-                    retVal = false;
+                    retVal = true; //Web services create items without folders, need to return true here
             }
             
             log.debug((new StringBuilder("Returning: ")).append(retVal).toString());
