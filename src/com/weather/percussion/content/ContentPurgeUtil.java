@@ -28,6 +28,7 @@ import com.percussion.services.contentmgr.IPSContentMgr;
 import com.percussion.services.contentmgr.PSContentMgrLocator;
 import com.percussion.services.contentmgr.data.PSContentNode;
 import com.percussion.services.guidmgr.IPSGuidManager;
+import com.percussion.services.guidmgr.PSGuidManagerLocator;
 import com.percussion.services.legacy.IPSCmsContentSummaries;
 import com.percussion.services.legacy.PSCmsContentSummariesLocator;
 import com.percussion.utils.guid.IPSGuid;
@@ -43,8 +44,8 @@ public class ContentPurgeUtil {
     private Calendar dateFrom; //Required Field
     protected IPSContentWs contentWebService;
     private IPSContentMgr contentManager;
-    private IPSCmsContentSummaries sumsvc;
-    private IPSGuidManager gmgr;
+    private IPSCmsContentSummaries contentSummariesService;
+    private IPSGuidManager guidManager;
     
     private static final Log log = LogFactory.getLog(com.weather.percussion.content.ContentPurgeUtil.class);
     
@@ -57,17 +58,14 @@ public class ContentPurgeUtil {
         setDateFrom(params);
         contentWebService = PSContentWsLocator.getContentWebservice();
         contentManager = PSContentMgrLocator.getContentMgr();
-        sumsvc = PSCmsContentSummariesLocator.getObjectManager();
+        contentSummariesService = PSCmsContentSummariesLocator.getObjectManager();
+        guidManager = PSGuidManagerLocator.getGuidMgr();
     }
     
     public void purge() throws Exception {
         log.debug("ContentPurgeUtil.purge()");
         List<IPSGuid> guidsToPurge = getGuidsToPurge();
-log.debug("Guids found to purge");
-for (IPSGuid guid : guidsToPurge) {
-    log.debug("Guid: " + guid.getUUID());
-}
-        //purgeGuids(guidsToPurge);        
+        purgeGuids(guidsToPurge);        
     }
     
     private void purgeGuids(List<IPSGuid> guidList) {
@@ -78,23 +76,34 @@ for (IPSGuid guid : guidsToPurge) {
          */
         for (IPSGuid guid : guidList) {
             try {
-                List<IPSGuid> singleGuidList = new ArrayList<IPSGuid>();
-                PSContentNode contentNode = getNodeFromGuid(guid);
-                initRequestInfo(contentNode.getProperty(COMMUNITY_ID_FIELD).getString());
-                List<PSItemStatus> itemStatusList = contentWebService.prepareForEdit(singleGuidList);
-                singleGuidList = new ArrayList<IPSGuid>();
-                singleGuidList.add(getEditGuid(guid.getUUID()));
-                contentWebService.deleteItems(singleGuidList);
+                log.debug("Purging item: " + guid.getUUID());
+                prepareGuidForEdit(guid);
+                purgeGuid(guid);
             }
             catch(Exception e) {
                 hasErrors = true;
                 log.debug(new StringBuilder("Error purging content: ").append(guid.getUUID()));
+                log.debug("Exception", e);
             }
         }
         
         if (hasErrors) {
             log.error("Errors found purging some items.  Please enable debug logging to see individual items.  All items being purged must be checked in");
         }
+    }
+    
+    private void prepareGuidForEdit(IPSGuid guidToEdit) throws Exception {
+        List<IPSGuid> singleGuidList = new ArrayList<IPSGuid>();
+        singleGuidList.add(guidToEdit);
+        PSContentNode contentNode = getNodeFromGuid(guidToEdit);
+        initRequestInfo(contentNode.getProperty(COMMUNITY_ID_FIELD).getString());
+        List<PSItemStatus> itemStatusList = contentWebService.prepareForEdit(singleGuidList);        
+    }
+    
+    private void purgeGuid(IPSGuid guidToPurge) throws Exception {
+        List<IPSGuid> singleGuidList = new ArrayList<IPSGuid>();
+        singleGuidList.add(getEditGuid(guidToPurge.getUUID()));
+        contentWebService.deleteItems(singleGuidList);        
     }
     
     private void setUserIds(Map<String, String> params) {
@@ -149,7 +158,7 @@ for (IPSGuid guid : guidsToPurge) {
     
     private List<IPSGuid> getGuidsToPurge() throws Exception {
         String queryString = buildContentSearchJcrQuery();
-log.debug("Query: " + queryString);        
+        log.debug("Query: " + queryString);        
         Query jcrQuery = contentManager.createQuery(queryString, "sql");
         QueryResult results = contentManager.executeQuery(jcrQuery, -1, null, null);
         return processContentQueryResults(results);
@@ -175,19 +184,19 @@ log.debug("Query: " + queryString);
     }
     
     private IPSGuid getEditGuid(int id) {
-        PSComponentSummary summary = sumsvc.loadComponentSummary(id);
+        PSComponentSummary summary = contentSummariesService.loadComponentSummary(id);
         PSLocator editLocator = summary.getEditLocator();
-        return gmgr.makeGuid(editLocator);
+        return guidManager.makeGuid(editLocator);
     }   
     
     private IPSGuid getCurrentGuid(int id) {
-        PSComponentSummary summary = sumsvc.loadComponentSummary(id);
+        PSComponentSummary summary = contentSummariesService.loadComponentSummary(id);
         PSLocator currentLocator = summary.getCurrentLocator();
-        return gmgr.makeGuid(currentLocator);
+        return guidManager.makeGuid(currentLocator);
     }     
     
     private String buildContentSearchJcrQuery() {
-        StringBuilder queryString = new StringBuilder("select rx:sys_contentid from {0} where rx:sys_contentcreateddate <= '{1}' ");        
+        StringBuilder queryString = new StringBuilder("select rx:sys_contentid from {0} where rx:sys_contentcreateddate <= ''{1}'' ");        
         queryString.append(buildCreatedByUserClause());
         queryString.append(buildJcrPathClause());                
         return MessageFormat.format(queryString.toString(), getContentTypesForQuery(), getCreatedDateForQuery());
@@ -203,9 +212,9 @@ log.debug("Query: " + queryString);
             if (!isFirst) {
                 retVal.append(" or ");
             }
-            retVal.append("rx:sys_contentcreatedby='");
+            retVal.append("rx:sys_contentcreatedby=''");
             retVal.append(userId);
-            retVal.append("'");
+            retVal.append("''");
             isFirst = false;
         }                
         retVal.append(")");    
@@ -219,9 +228,9 @@ log.debug("Query: " + queryString);
             if (!isFirst) {
                 retVal.append(" or ");
             }
-            retVal.append(" jcr:path like '");
+            retVal.append(" jcr:path like ''");
             retVal.append(folderPath);
-            retVal.append("'");
+            retVal.append("''");
             isFirst = false;
         }
         retVal.append(")");
@@ -245,12 +254,11 @@ log.debug("Query: " + queryString);
     }
     
     private String getCreatedDateForQuery() {
-        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-ddTHH:mm:ss");
+        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         return dateFormat.format(dateFrom.getTime());        
     }
     
     private void initRequestInfo(String communityId) {
-        log.debug("Initializing request info, community: " + communityId);
         PSRequest psRequest = (PSRequest)PSRequestInfo.getRequestInfo(PSRequestInfo.KEY_PSREQUEST);
         if(psRequest == null)
         {
