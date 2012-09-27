@@ -10,6 +10,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import javax.jcr.Property;
+import javax.jcr.PropertyIterator;
 import javax.jcr.query.Query;
 import javax.jcr.query.QueryResult;
 import javax.jcr.query.Row;
@@ -41,6 +43,7 @@ public class ContentPurgeUtil {
     private List<String> userIds; //Optional Field
     private List<String> folderPaths; //Required Field
     private List<String> contentTypes; //Optional Field
+    private List<Integer> contentStateIds; //Optional Field
     private Calendar dateFrom; //Required Field
     protected IPSContentWs contentWebService;
     private IPSContentMgr contentManager;
@@ -56,6 +59,7 @@ public class ContentPurgeUtil {
         setFolderPaths(params);
         setContentTypes(params);
         setDateFrom(params);
+        setContentStateIds(params);
         contentWebService = PSContentWsLocator.getContentWebservice();
         contentManager = PSContentMgrLocator.getContentMgr();
         contentSummariesService = PSCmsContentSummariesLocator.getObjectManager();
@@ -136,6 +140,25 @@ public class ContentPurgeUtil {
         }
     }
     
+    private void setContentStateIds(Map<String, String> params) throws IllegalArgumentException {
+        String contentStateIdsParam = params.get(TWCPurgeContentTask.CONTENT_STATE_IDS_PARAM);
+        contentStateIds = new ArrayList<Integer>();
+        if (!StringUtils.isBlank(contentStateIdsParam)) {
+            List<String> contentStateIdsAsStrings = Arrays.asList(contentStateIdsParam.split("\\s*,\\s*"));
+            try {
+                for (String stateIdAsString : contentStateIdsAsStrings) {
+                    contentStateIds.add(Integer.parseInt(stateIdAsString));
+                }
+            }
+            catch(NumberFormatException nfe) {
+                throw new IllegalArgumentException(
+                        new StringBuilder(TWCPurgeContentTask.CONTENT_STATE_IDS_PARAM).append(
+                                " must contain valid integers in a comma separated list").toString());
+            }
+            
+        }
+    }
+    
     private void setDateFrom(Map<String, String> params) throws IllegalArgumentException {
         String numberOfDaysParam = params.get(TWCPurgeContentTask.NUMBER_OF_DAYS);
         if (StringUtils.isBlank(numberOfDaysParam)) {
@@ -161,7 +184,9 @@ public class ContentPurgeUtil {
         log.debug("Query: " + queryString);        
         Query jcrQuery = contentManager.createQuery(queryString, "sql");
         QueryResult results = contentManager.executeQuery(jcrQuery, -1, null, null);
-        return processContentQueryResults(results);
+        List<IPSGuid> retVal = processContentQueryResults(results);
+        retVal = filterGuidsBasedOnContentStates(retVal);
+        return retVal;
     }
     
     private List<IPSGuid> processContentQueryResults(QueryResult queryResult) {
@@ -181,6 +206,18 @@ public class ContentPurgeUtil {
             log.error("Error attempting to process results of query for items to purge", e);
         }
         return retVal;
+    }
+    
+    private List<IPSGuid> filterGuidsBasedOnContentStates(List<IPSGuid> guidListToFilter) throws Exception {
+        List<IPSGuid> filteredGuidList = new ArrayList<IPSGuid>();
+        for (IPSGuid guid : guidListToFilter) {
+            PSContentNode contentNode = getNodeFromGuid(guid);
+            if (contentStateIds.contains(Integer.valueOf(contentNode.getSummary().getContentStateId()))) {
+                filteredGuidList.add(guid);
+            }
+        }
+        
+        return filteredGuidList;
     }
     
     private IPSGuid getEditGuid(int id) {
