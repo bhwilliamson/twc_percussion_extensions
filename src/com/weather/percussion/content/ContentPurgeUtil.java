@@ -209,11 +209,22 @@ public class ContentPurgeUtil {
     }
     
     private List<IPSGuid> filterGuidsBasedOnContentStates(List<IPSGuid> guidListToFilter) throws Exception {
+log.debug("Filtering content by workflow states");
+for (Integer i : contentStateIds) {
+log.debug("Parameter workflow state id: " + i);
+}
+
+        if (contentStateIds == null || contentStateIds.size() < 1) {
+            return guidListToFilter;
+        }
+        
         List<IPSGuid> filteredGuidList = new ArrayList<IPSGuid>();
         for (IPSGuid guid : guidListToFilter) {
             PSContentNode contentNode = getNodeFromGuid(guid);
+log.debug("Item: " + guid.getUUID() + " Has workflow state id: " + contentNode.getSummary().getContentStateId());            
             if (contentStateIds.contains(Integer.valueOf(contentNode.getSummary().getContentStateId()))) {
                 filteredGuidList.add(guid);
+log.debug("Adding this item to the list to filter b/c its workflow state is in the list of params");                
             }
         }
         
