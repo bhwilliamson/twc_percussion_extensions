@@ -42,7 +42,7 @@ import com.weather.percussion.extensions.schedule.TWCPurgeContentTask;
 public class ContentPurgeUtil {
     private List<String> userIds; //Optional Field
     private List<String> folderPaths; //Required Field
-    private List<String> contentTypes; //Optional Field
+    private List<String> contentTypes; //Required Field
     private List<Integer> contentStateIds; //Optional Field
     private Calendar dateFrom; //Required Field
     protected IPSContentWs contentWebService;
@@ -130,14 +130,14 @@ public class ContentPurgeUtil {
         folderPaths = Arrays.asList(folderPathsParam.split("\\s*,\\s*"));
     }
     
-    private void setContentTypes(Map<String, String> params) {
+    private void setContentTypes(Map<String, String> params) throws IllegalArgumentException {
         String contentTypesParam = params.get(TWCPurgeContentTask.CONTENT_TYPES_PARAM);
-        if (!StringUtils.isBlank(contentTypesParam)) {
-            contentTypes = Arrays.asList(contentTypesParam.split("\\s*,\\s*"));
+        if (StringUtils.isBlank(contentTypesParam)) {
+            throw new IllegalArgumentException(
+                    new StringBuilder(TWCPurgeContentTask.CONTENT_TYPES_PARAM).append(
+                            " is a required field").toString());
         }
-        else {
-            contentTypes = new ArrayList<String>();
-        }
+        contentTypes = Arrays.asList(contentTypesParam.split("\\s*,\\s*"));
     }
     
     private void setContentStateIds(Map<String, String> params) throws IllegalArgumentException {
@@ -209,22 +209,15 @@ public class ContentPurgeUtil {
     }
     
     private List<IPSGuid> filterGuidsBasedOnContentStates(List<IPSGuid> guidListToFilter) throws Exception {
-log.debug("Filtering content by workflow states");
-for (Integer i : contentStateIds) {
-log.debug("Parameter workflow state id: " + i);
-}
-
         if (contentStateIds == null || contentStateIds.size() < 1) {
             return guidListToFilter;
         }
         
         List<IPSGuid> filteredGuidList = new ArrayList<IPSGuid>();
         for (IPSGuid guid : guidListToFilter) {
-            PSContentNode contentNode = getNodeFromGuid(guid);
-log.debug("Item: " + guid.getUUID() + " Has workflow state id: " + contentNode.getSummary().getContentStateId());            
+            PSContentNode contentNode = getNodeFromGuid(guid);            
             if (contentStateIds.contains(Integer.valueOf(contentNode.getSummary().getContentStateId()))) {
-                filteredGuidList.add(guid);
-log.debug("Adding this item to the list to filter b/c its workflow state is in the list of params");                
+                filteredGuidList.add(guid);                
             }
         }
         
@@ -286,9 +279,6 @@ log.debug("Adding this item to the list to filter b/c its workflow state is in t
     }
     
     private String getContentTypesForQuery() {
-        if (contentTypes.size() < 1) {
-            return "*";
-        }
         StringBuilder retVal = new StringBuilder();
         boolean isFirst = true;
         for (String contentType : contentTypes) {
