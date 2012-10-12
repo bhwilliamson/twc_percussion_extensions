@@ -191,7 +191,7 @@ public class ContentPurgeUtil {
     
     private List<IPSGuid> getGuidsToPurge() throws Exception {
         String queryString = buildContentSearchJcrQuery();
-        log.debug("Query: " + queryString);        
+        log.debug("The Purge Query: " + queryString);        
         Query jcrQuery = contentManager.createQuery(queryString, "sql");
         QueryResult results = contentManager.executeQuery(jcrQuery, -1, null, null);
         List<IPSGuid> retVal = processContentQueryResults(results);
