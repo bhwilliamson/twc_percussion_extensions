@@ -45,6 +45,7 @@ public class ContentPurgeUtil {
     private List<String> contentTypes; //Required Field
     private List<Integer> contentStateIds; //Optional Field
     private Calendar dateFrom; //Required Field
+    private String dateField; //Optional Field
     protected IPSContentWs contentWebService;
     private IPSContentMgr contentManager;
     private IPSCmsContentSummaries contentSummariesService;
@@ -53,6 +54,7 @@ public class ContentPurgeUtil {
     private static final Log log = LogFactory.getLog(com.weather.percussion.content.ContentPurgeUtil.class);
     
     private static final String COMMUNITY_ID_FIELD = "rx:sys_communityid";
+    private static final String DEFAULT_DATE_FIELD = "rx:sys_contentcreateddate";
     
     public ContentPurgeUtil(Map<String, String> params) throws IllegalArgumentException {
         setUserIds(params);
@@ -60,6 +62,7 @@ public class ContentPurgeUtil {
         setContentTypes(params);
         setDateFrom(params);
         setContentStateIds(params);
+        setDateField(params);
         contentWebService = PSContentWsLocator.getContentWebservice();
         contentManager = PSContentMgrLocator.getContentMgr();
         contentSummariesService = PSCmsContentSummariesLocator.getObjectManager();
@@ -117,6 +120,13 @@ public class ContentPurgeUtil {
         }
         else {
             userIds = new ArrayList<String>();
+        }
+    }
+    
+    private void setDateField(Map<String, String> params) {
+        dateField = params.get(TWCPurgeContentTask.DATE_FIELD_PARAM);
+        if (StringUtils.isBlank(dateField)) {
+            dateField = DEFAULT_DATE_FIELD;
         }
     }
     
@@ -237,10 +247,10 @@ public class ContentPurgeUtil {
     }     
     
     private String buildContentSearchJcrQuery() {
-        StringBuilder queryString = new StringBuilder("select rx:sys_contentid from {0} where rx:sys_contentcreateddate <= ''{1}'' ");        
+        StringBuilder queryString = new StringBuilder("select rx:sys_contentid from {0} where {1} <= ''{2}'' ");        
         queryString.append(buildCreatedByUserClause());
         queryString.append(buildJcrPathClause());                
-        return MessageFormat.format(queryString.toString(), getContentTypesForQuery(), getCreatedDateForQuery());
+        return MessageFormat.format(queryString.toString(), getContentTypesForQuery(), dateField, getCreatedDateForQuery());
     }
     
     private String buildCreatedByUserClause() {        

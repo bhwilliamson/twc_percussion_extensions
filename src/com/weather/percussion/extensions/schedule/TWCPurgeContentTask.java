@@ -22,6 +22,7 @@ public class TWCPurgeContentTask implements IPSTask {
     public static final String CONTENT_TYPES_PARAM = "contentTypes";
     public static final String NUMBER_OF_DAYS = "numberOfDays";
     public static final String CONTENT_STATE_IDS_PARAM = "workflowStateIds";
+    public static final String DATE_FIELD_PARAM = "dateField";
     
     public void init(IPSExtensionDef extensionDef, File file) throws PSExtensionException {
     } 
