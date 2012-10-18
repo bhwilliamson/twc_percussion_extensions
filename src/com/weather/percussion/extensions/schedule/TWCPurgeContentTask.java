@@ -23,6 +23,7 @@ public class TWCPurgeContentTask implements IPSTask {
     public static final String NUMBER_OF_DAYS = "numberOfDays";
     public static final String CONTENT_STATE_IDS_PARAM = "workflowStateIds";
     public static final String DATE_FIELD_PARAM = "dateField";
+    public static final String DO_NOT_PURGE_PARAM = "doNotPurge";
     
     public void init(IPSExtensionDef extensionDef, File file) throws PSExtensionException {
     } 
@@ -34,7 +35,7 @@ public class TWCPurgeContentTask implements IPSTask {
         long endTimeMillisecs = 0L;
         try {
             ContentPurgeUtil contentPurgeUtil = new ContentPurgeUtil(params);
-            contentPurgeUtil.purge();            
+            returnMsg = contentPurgeUtil.purge();            
         }
         catch(Exception exception) {
             isSuccessful = false;

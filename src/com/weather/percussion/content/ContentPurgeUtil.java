@@ -46,10 +46,12 @@ public class ContentPurgeUtil {
     private List<Integer> contentStateIds; //Optional Field
     private Calendar dateFrom; //Required Field
     private String dateField; //Optional Field
+    private boolean doNotPurge; //Optional Field
     protected IPSContentWs contentWebService;
     private IPSContentMgr contentManager;
     private IPSCmsContentSummaries contentSummariesService;
     private IPSGuidManager guidManager;
+    private StringBuilder resultsMessage;
     
     private static final Log log = LogFactory.getLog(com.weather.percussion.content.ContentPurgeUtil.class);
     
@@ -63,16 +65,22 @@ public class ContentPurgeUtil {
         setDateFrom(params);
         setContentStateIds(params);
         setDateField(params);
+        setDoNotPurge(params);
         contentWebService = PSContentWsLocator.getContentWebservice();
         contentManager = PSContentMgrLocator.getContentMgr();
         contentSummariesService = PSCmsContentSummariesLocator.getObjectManager();
-        guidManager = PSGuidManagerLocator.getGuidMgr();
+        guidManager = PSGuidManagerLocator.getGuidMgr();        
     }
     
-    public void purge() throws Exception {
+    public String purge() throws Exception {
         log.debug("ContentPurgeUtil.purge()");
+        resultsMessage = new StringBuilder();
         List<IPSGuid> guidsToPurge = getGuidsToPurge();
-        purgeGuids(guidsToPurge);        
+        logGuidsToPurge(guidsToPurge);
+        if (!doNotPurge) {
+            purgeGuids(guidsToPurge);
+        }
+        return resultsMessage.toString();
     }
     
     private void purgeGuids(List<IPSGuid> guidList) {
@@ -89,6 +97,7 @@ public class ContentPurgeUtil {
             }
             catch(Exception e) {
                 hasErrors = true;
+                logExceptionPurgingItem(e, guid);
                 log.debug(new StringBuilder("Error purging content: ").append(guid.getUUID()));
                 log.debug("Exception", e);
             }
@@ -128,6 +137,10 @@ public class ContentPurgeUtil {
         if (StringUtils.isBlank(dateField)) {
             dateField = DEFAULT_DATE_FIELD;
         }
+    }
+    
+    private void setDoNotPurge(Map<String, String> params) {
+        doNotPurge = Boolean.valueOf(params.get(TWCPurgeContentTask.DO_NOT_PURGE_PARAM));
     }
     
     private void setFolderPaths(Map<String, String> params) throws IllegalArgumentException {
@@ -329,6 +342,28 @@ public class ContentPurgeUtil {
         }
         else
             throw new Exception("Could not find PSContentNode for guid: " + guid.toString());
-    }    
+    } 
+    
+    private void logGuidsToPurge(List<IPSGuid> guidsToPurge) {
+        for (IPSGuid ipsGuid : guidsToPurge) {
+            resultsMessage.append("Found item eligible for purge with id: ");
+            resultsMessage.append(ipsGuid.getUUID()).append(".\n");
+        }
+    }
+    
+    private void logExceptionPurgingItem(Exception exception, IPSGuid guidBeingPurged) {
+        resultsMessage.append("Unable to purge item with id: ");
+        resultsMessage.append(guidBeingPurged.getUUID());
+        resultsMessage.append(". Error message: ");
+        resultsMessage.append(getExceptionCauseLocalizedMsg(exception));
+        resultsMessage.append("\n");
+    }
 
+    private String getExceptionCauseLocalizedMsg(Exception exception) {
+        Throwable causeException = exception;
+        if (exception.getCause() != null) {
+            causeException = exception.getCause();
+        }
+        return causeException.getLocalizedMessage();        
+    }  
 }
